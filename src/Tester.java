@@ -1,4 +1,3 @@
-import java.util.concurrent.Executors;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -13,8 +12,7 @@ public final class Tester {
   public static void main(final String[] args) throws Exception {
     addFileHandler(logger);
 
-    final MM1System system = new MM1System(10000, 0.5, 500, logger, Executors.newScheduledThreadPool(1));
-    system.start();
+    final MM1System system = new MM1System(10000, 0.95, 50, logger);
 
     return ;
   }

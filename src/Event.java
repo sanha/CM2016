@@ -23,7 +23,7 @@ public final class Event {
     return departureTime - arrivalTime;
   }
 
-  public void start(final long departureTime) {
-    this.departureTime = departureTime;
+  public void start() {
+    this.departureTime = System.currentTimeMillis();
   }
 }

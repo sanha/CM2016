@@ -1,4 +1,3 @@
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.logging.Logger;
 
 /**
@@ -9,7 +8,7 @@ public final class MM1System {
 
   private final double timeLimit;
 
-  private long startTime;
+  private final long startTime;
 
   private long duration;
 
@@ -25,57 +24,62 @@ public final class MM1System {
 
   private boolean end;
 
+  private long eventCreateTime;
+
+  private long serverIdleTime;
+
   public MM1System(final double timeLimit,
                    final double trafficLoad,
                    final long muOverOne,
-                   final Logger logger,
-                   final ScheduledExecutorService scheduler) {
+                   final Logger logger) throws InterruptedException, RuntimeException {
     this.timeLimit = timeLimit;
     this.eventQueue = new EventQueue();
-    this.eventGenerator = new EventGenerator(muOverOne, trafficLoad, scheduler, eventQueue);
+    this.eventGenerator = new EventGenerator(muOverOne, trafficLoad);
     this.server = new Server();
     this.LOG = logger;
     this.duration = Long.MIN_VALUE;
     this.totalServedJob = 0;
     this.totalDelayTime = 0;
     this.end = false;
+    this.startTime = System.currentTimeMillis();
+    eventCreateTime = startTime + eventGenerator.getEventInterval();
+    this.serverIdleTime = Long.MIN_VALUE;
+    LOG.info("MM1 System starts at " + startTime);
+    operate();
   }
 
-  public void start() throws InterruptedException, RuntimeException {
-    this.startTime = System.currentTimeMillis();
-    eventGenerator.start();
-    LOG.info("MM1 System starts at " + startTime);
-    // System.out.println("MM1 System starts at " + startTime);
-
-    while(System.currentTimeMillis() - startTime < timeLimit) {
+  private void operate() {
+    long currentTime = System.currentTimeMillis();
+    while(currentTime - startTime < timeLimit) {
+      if (currentTime >= eventCreateTime) {
+        eventQueue.addEvent(eventGenerator.getEvent());
+        eventCreateTime = currentTime + eventGenerator.getEventInterval();
+      }
       if(eventQueue.isEmpty()) {
-        System.out.println("Empty");
+        currentTime = System.currentTimeMillis();
         continue;
       }
-      final long delay = server.process(eventQueue.pollEvent());
-      if (delay == Long.MIN_VALUE) {
-        throw new RuntimeException("SYSTEM: Server process method is called during non-idle state.");
-      } else {
-        totalServedJob ++;
-        totalDelayTime += delay;
+      if (currentTime >= serverIdleTime) {
+        final Event event = eventQueue.pollEvent();
+        event.start();
+        serverIdleTime = currentTime + server.process(event);
+
+        totalServedJob++;
+        totalDelayTime += event.getDelayTime();
       }
+      currentTime = System.currentTimeMillis();
     }
     stop();
   }
 
   private void stop() {
     this.duration = System.currentTimeMillis() - startTime;
-    eventGenerator.close();
     this.end = true;
     LOG.info("MM1 System ends at " + (duration + startTime) +", duration is " + duration);
     LOG.info("Average job number: " + getAvgJobs());
     LOG.info("Average queue length: " + getAvgQueueLength());
     LOG.info("Average delay per a job:" + getAvgDelay());
     LOG.info("Total served job: " + totalServedJob);
-    // System.out.println("MM1 System ends at " + (duration + startTime) +", duration is " + duration);
-    // System.out.println(("Average job number: " + getAvgJobs()));
-    // System.out.println("Average queue length: " + getAvgQueueLength());
-    // System.out.println("Average delay per a job:" + getAvgDelay());
   }
 
   public double getAvgQueueLength() {
