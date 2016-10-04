@@ -18,26 +18,28 @@ public final class EventQueue {
     this.lastTimestamp = Long.MIN_VALUE;
   }
 
-  public void addEvent(final Event event) {
+  public void addEvent(final Event event, final long currentTimestamp) {
     if (lastTimestamp == Long.MIN_VALUE) {
-      lastTimestamp = System.currentTimeMillis();
+      lastTimestamp = currentTimestamp;
     } else {
-      final long currentTimestamp = System.currentTimeMillis();
       timedQueueLength += queue.size() * (currentTimestamp - lastTimestamp);
       lastTimestamp = currentTimestamp;
     }
     queue.add(event);
   }
 
-  public Event pollEvent() throws RuntimeException {
+  public Event pollEvent(final long currentTimestamp) throws RuntimeException {
     if (queue.isEmpty()) {
       throw new RuntimeException("QUEUE: System polled empty event queue.");
     } else {
-      final long currentTimestamp = System.currentTimeMillis();
       timedQueueLength += queue.size() * (currentTimestamp - lastTimestamp);
       lastTimestamp = currentTimestamp;
       return queue.poll();
     }
+  }
+
+  public Queue<Event> getQueue() {
+    return queue;
   }
 
   public double getTimedQueueLength() {

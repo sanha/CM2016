@@ -1,3 +1,4 @@
+import java.util.Queue;
 import java.util.logging.Logger;
 
 /**
@@ -8,7 +9,7 @@ public final class MM1System {
 
   private final double timeLimit;
 
-  private final long startTime;
+  private long currentTime;
 
   private long duration;
 
@@ -18,9 +19,9 @@ public final class MM1System {
 
   private final Server server;
 
-  private int totalServedJob;
+  private int totalServedEvents;
 
-  private double totalDelayTime;
+  private double servedDelayTime;
 
   private boolean end;
 
@@ -31,55 +32,57 @@ public final class MM1System {
   public MM1System(final double timeLimit,
                    final double trafficLoad,
                    final long muOverOne,
-                   final Logger logger) throws InterruptedException, RuntimeException {
+                   final Logger logger) throws RuntimeException {
     this.timeLimit = timeLimit;
     this.eventQueue = new EventQueue();
     this.eventGenerator = new EventGenerator(muOverOne, trafficLoad);
     this.server = new Server();
     this.LOG = logger;
     this.duration = Long.MIN_VALUE;
-    this.totalServedJob = 0;
-    this.totalDelayTime = 0;
+    this.totalServedEvents = 0;
+    this.servedDelayTime = 0;
     this.end = false;
-    this.startTime = System.currentTimeMillis();
-    eventCreateTime = startTime + eventGenerator.getEventInterval();
+    this.currentTime = 0;
+    eventCreateTime = eventGenerator.getEventInterval();
     this.serverIdleTime = Long.MIN_VALUE;
-    LOG.info("MM1 System starts at " + startTime);
+    LOG.info("MM1 System starts");
     operate();
   }
 
   private void operate() {
-    long currentTime = System.currentTimeMillis();
-    while(currentTime - startTime < timeLimit) {
+    while(currentTime < timeLimit) {
       if (currentTime >= eventCreateTime) {
-        eventQueue.addEvent(eventGenerator.getEvent());
+        eventQueue.addEvent(eventGenerator.getEvent(currentTime), currentTime);
         eventCreateTime = currentTime + eventGenerator.getEventInterval();
       }
       if(eventQueue.isEmpty()) {
-        currentTime = System.currentTimeMillis();
+        currentTime++;
         continue;
       }
       if (currentTime >= serverIdleTime) {
-        final Event event = eventQueue.pollEvent();
-        event.start();
+        final Event event = eventQueue.pollEvent(currentTime);
+        event.start(currentTime);
         serverIdleTime = currentTime + server.process(event);
 
-        totalServedJob++;
-        totalDelayTime += event.getDelayTime();
+        totalServedEvents++;
+        servedDelayTime += event.getDelayTime(currentTime);
       }
-      currentTime = System.currentTimeMillis();
+      currentTime++;
     }
     stop();
   }
 
   private void stop() {
-    this.duration = System.currentTimeMillis() - startTime;
+    this.duration = currentTime;
     this.end = true;
-    LOG.info("MM1 System ends at " + (duration + startTime) +", duration is " + duration);
+
+    LOG.info("MM1 System ends at " + duration);
+    /*
     LOG.info("Average job number: " + getAvgJobs());
     LOG.info("Average queue length: " + getAvgQueueLength());
     LOG.info("Average delay per a job:" + getAvgDelay());
-    LOG.info("Total served job: " + totalServedJob);
+     */
+    LOG.info("Total served job: " + totalServedEvents);
   }
 
   public double getAvgQueueLength() {
@@ -96,12 +99,19 @@ public final class MM1System {
     } else {
       throw new RuntimeException("SYSTEM: System is not ended yet.");
     }
-
   }
 
   public double getAvgDelay() {
     if (end) {
-      return totalDelayTime / totalServedJob;
+      final Queue<Event> queue = eventQueue.getQueue();
+      long notServedDelayTime = 0;
+      final long notServedEvents = queue.size();
+      while(!queue.isEmpty()) {
+        final Event event = queue.poll();
+        notServedDelayTime += event.getDelayTime(currentTime);
+      }
+
+      return (servedDelayTime + notServedDelayTime) / (totalServedEvents + notServedEvents);
     } else {
       throw new RuntimeException("SYSTEM: System is not ended yet.");
     }

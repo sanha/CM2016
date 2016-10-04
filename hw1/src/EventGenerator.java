@@ -18,8 +18,8 @@ public final class EventGenerator {
     this.started = new AtomicBoolean(false);
   }
 
-  public Event getEvent() {
-    return new Event(RandomNumberGenerator.expntl(muOverOne), System.currentTimeMillis());
+  public Event getEvent(final long currentTime) {
+    return new Event(RandomNumberGenerator.expntl(muOverOne), currentTime);
   }
 
   public long getEventInterval() {
