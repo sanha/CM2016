@@ -35,7 +35,7 @@ public final class Simulator {
       avgQLength /= iteratePerTraffic;
       avgDelay /= iteratePerTraffic;
 
-      result += (trafficLoad + " " + avgDelay + "\n");
+      result += (trafficLoad + " " + avgJobs + " " + avgQLength + " " + avgDelay + "\n");
     }
 
     logger.info(result);

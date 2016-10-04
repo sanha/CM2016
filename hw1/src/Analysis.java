@@ -21,7 +21,7 @@ public final class Analysis {
       double avgQLength = avgJobs * trafficLoad;
       double avgDelay = avgJobs * defaultMuOverOne;
 
-      result += (trafficLoad + " " + avgDelay + "\n");
+      result += (trafficLoad + " " + avgJobs + " " + avgQLength + " " + avgDelay + "\n");
     }
 
     logger.info(result);
