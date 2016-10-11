@@ -20,8 +20,8 @@
 #include "smpl.h"
 #include <stdlib.h>
 
-#define nl 4096      /* element pool length                 */
-#define ns 4096      /* namespace length                    */
+#define nl 65536      /* element pool length                 */
+#define ns 65536      /* namespace length                    */
 #define pl 58        /* printer page length   (lines used   */
 #define sl 23        /* screen page length     by 'smpl')   */
 #define FF 12        /* form feed                           */
