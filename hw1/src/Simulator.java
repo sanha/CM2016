@@ -20,7 +20,6 @@ public final class Simulator {
 
     String result = "TrafficLoad AvgJobs AvgQLength AvgDelay \n";
 
-    /**
     for (double trafficLoad = 0.0; trafficLoad < 0.96; trafficLoad += 0.025) {
       double avgJobs = 0;
       double avgQLength = 0;
@@ -36,14 +35,18 @@ public final class Simulator {
       avgQLength /= iteratePerTraffic;
       avgDelay /= iteratePerTraffic;
 
+      //result += (trafficLoad + " " + avgJobs + " " + avgQLength + " " + avgDelay + "\n");
       result += (trafficLoad + " " + avgJobs + " " + avgQLength + " " + avgDelay + "\n");
+      //result += (trafficLoad + " " + avgJobs + " " + avgQLength + " " + avgDelay + "\n");
+      //result += (trafficLoad + " " + avgJobs + " " + avgQLength + " " + avgDelay + "\n");
     }
-    */
 
+    /*
     final MM1System system = new MM1System(stepLimit, 1.0, defaultMuOverOne, logger);
     result += (1.0 + " " + system.getAvgJobs() + " " + system.getAvgQueueLength() + " " + system.getAvgDelay() + "\n");
     final MM1System system2 = new MM1System(stepLimit, 1.5, defaultMuOverOne, logger);
     result += (1.5 + " " + system2.getAvgJobs() + " " + system2.getAvgQueueLength() + " " + system2.getAvgDelay() + "\n");
+    */
 
     logger.info(result);
     return ;
