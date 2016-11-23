@@ -1,0 +1,17 @@
+MNet.sink: RespTime:18.1351
+rmnet.RMNet.sink: RespTime:18.2581
+rmnet.RMNet.sink: RespTime:18.3597
+rmnet.RMNet.sink: RespTime:18.5458
+rmnet.RMNet.sink: RespTime:17.7005
+rmnet.RMNet.sink: RespTime:17.6702
+rmnet.RMNet.sink: RespTime:17.6654
+rmnet.RMNet.sink: RespTime:17.5654
+rmnet.RMNet.sink: RespTime:18.0142
+rmnet.RMNet.sink: RespTime:18.2743
+rmnet.RMNet.sink: RespTime:18.0653
+rmnet.RMNet.sink: RespTime:18.4337
+rmnet.RMNet.sink: RespTime:18.2232
+rmnet.RMNet.sink: RespTime:18.4771
+rmnet.RMNet.sink: RespTime:19.2216
+rmnet.RMNet.sink: RespTime:21.1539
+rmnet.RMNet.sink: RespTime:33.4889
