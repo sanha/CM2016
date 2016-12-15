@@ -44,7 +44,10 @@ set val(ll)             LL                         ;# link layer type
 set val(ant)            Antenna/OmniAntenna        ;# antenna model
 set val(ifqlen)         50                         ;# max packet in ifq
 set val(nn)             100                          ;# number of mobilenodes
-set val(rp)             AODV                       ;# routing protocol
+#set val(rp)             SPEED                     ;# routing protocol
+#set val(rp)             DSDV                     ;# routing protocol
+set val(rp)             AODV                     ;# routing protocol
+#mark
 
 set val(x) 1000
 set val(y) 1000
@@ -158,12 +161,20 @@ for {set i 0} {$i < $val(nn)} {incr i} {
 	$ns_ initial_node_pos $node_($i) 20
 }
 
+for {set i 6} {$i < 98} {incr i} {
+	$ns_ at 10.0 "$node_($i) setdest [expr {100 + floor(rand() * 800)}] [expr floor(rand() * 990)] 10.0"
+}
 #$ns_ at 10.0 "$node_(3) setdest 50.0 350.0 10.0"
 
 #Define a 'recv' function for the class 'Agent/Ping'
+set recv_count 0
+set recv_delay 0.0
 Agent/Ping instproc recv {from rtt} {
     $self instvar node_
     puts "node [$node_ id] received ping answer from \ $from with round-trip-time $rtt ms."
+	set $recv_count [expr {$recv_count + 1}]
+	set $recv_delay [expr {$recv_delay + rtt}]
+    puts "accum delay $recv_delay avg [expr {$recv_delay / $recv_count}] ETE [expr {$recv_delay / $recv_count / 2}]"
 }
 
 # Setup traffic flow between nodes
@@ -189,7 +200,7 @@ for {set i 0} {$i < 6} {incr i} {
     $ns_ connect $udp_($i) $sink
     set cbr_($i) [new Application/Traffic/CBR]
     $cbr_($i) set packetSize_ 32000
-    $cbr_($i) set rate 3.2Mb	
+    $cbr_($i) set rate 0.032Mb	
     $cbr_($i) attach-agent $udp_($i)
     $ns_ at 10.0 "$cbr_($i) start" 
 
@@ -201,6 +212,31 @@ for {set i 0} {$i < 6} {incr i} {
 		$ns_ at [expr 3.0 * $j] "$p_($i) send"
 	}
 } 
+
+#Define a 'recv' function for the class 'Agent/Ping'
+Agent/Ping instproc recv {from rtt} {
+    $self instvar node_
+#    puts "node [$node_ id] received ping answer from \ $from with round-trip-time $rtt ms."
+    puts "$rtt"
+}
+
+# Setup flow traffic flow between nodes
+#set sink [new Agent/TCPSink]
+	set flow_sink [new Agent/LossMonitor]
+	$ns_ attach-agent $node_([expr {6 + int(rand() * 92)}]) $flow_sink
+
+    set flow_udp [new Agent/UDP]
+    $flow_udp set class_ [expr 10];
+    $ns_ attach-agent $node_([expr {6 + int(rand() * 92)}]) $flow_udp
+    $ns_ connect $flow_udp $flow_sink
+
+    set flow_cbr [new Application/Traffic/CBR]
+    $flow_cbr set packetSize_ 32000
+    $flow_cbr set rate 3.2Mb
+#mark
+#    $flow_cbr set rate 0.0Mb
+    $flow_cbr attach-agent $flow_udp
+    $ns_ at 80.0 "$flow_cbr start"
 
 #
 # Tell nodes when the simulation ends
