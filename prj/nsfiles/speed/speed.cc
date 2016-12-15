@@ -50,7 +50,6 @@ extern "C" {
 #include <address.h>
 #include <mobilenode.h>
 
-
 #define SPEED_STARTUP_JITTER 2.0	// secs to jitter start of periodic activity from
 				// when start-dsr msg sent to agent
 #define SPEED_ALMOST_NOW     0.1 // jitter used for events that should be effectively
@@ -893,7 +892,8 @@ SPEED_Agent::forwardPacket (Packet * p)
   // Note: pkt is not buffered if route to base_stn is unknown
 
   dst = Address::instance().get_nodeaddr(iph->daddr());  
-  if (diff_subnet(iph->daddr())) {
+//speed
+/*  if (diff_subnet(iph->daddr())) {
 	   prte = table_->GetEntry (dst);
 	  if (prte && prte->metric != BIG) 
 		  goto send;
@@ -910,7 +910,7 @@ SPEED_Agent::forwardPacket (Packet * p)
 		  Packet::free(p);
 		  return;
 	  }
-  }
+  } */
   
   prte = table_->GetEntry (dst);
   
@@ -919,13 +919,15 @@ SPEED_Agent::forwardPacket (Packet * p)
   //  hdrc->xmit_failure_, hdrc->xmit_failure_data_,
   //  hdrc->num_forwards_, hdrc->opt_num_forwards);
 
-  if (prte && prte->metric != BIG)
+//  if (prte && prte->metric != BIG)
+//speed
+  if (prte)
     {
        //printf("(%d)-have route for dst\n",myaddr_);
-       goto send;
+//       goto send;
     }
-  else if (prte)
-    { /* must queue the packet */
+/*  else if (prte)
+    { // must queue the packet 
 	    //printf("(%d)-no route, queue pkt\n",myaddr_);
       if (!prte->q)
 	{
@@ -941,7 +943,7 @@ SPEED_Agent::forwardPacket (Packet * p)
       while (prte->q->length () > MAX_QUEUE_LENGTH)
 	      drop (prte->q->deque (), DROP_RTR_QFULL);
       return;
-    }
+    }*/
   else
     { // Brand new destination
       ntable_ent rte;
@@ -976,11 +978,12 @@ SPEED_Agent::forwardPacket (Packet * p)
       return;
     }
 
-
+// mark
  send:
   hdrc->addr_type_ = NS_AF_INET;
   hdrc->xmit_failure_ = mac_callback;
   hdrc->xmit_failure_data_ = this;
+  
   if (prte->metric > 1)
 	  hdrc->next_hop_ = prte->hop;
   else
@@ -995,6 +998,22 @@ VFP %.5f _%d_ %d:%d -> %d:%d", now, myaddr_, iph->saddr(),
 // debug
   if (DEBUG_P)	
       printf("Forwarding packet from %d to %d with delay %lf\n", myaddr_, hdrc->next_hop_, prte->delay);
+
+  MobileNode *dst_node = (MobileNode *)Node::get_node_by_address(dst);     
+  MobileNode *cur_node = (MobileNode *)Node::get_node_by_address(myaddr_);     
+  double cur_dist = cur_node->distance(dst_node);
+  ntable_ent *l_prte;
+  for (table_->InitLoop(); (l_prte = table_->NextLoop());) {
+      if (l_prte->metric == 1) { 
+          MobileNode *hop_node = (MobileNode *)Node::get_node_by_address(l_prte->dst);
+          double hop_dist = hop_node->distance(dst_node);
+          if (l_prte->delay == 0.0) {
+              printf("delay is 0.0, pass dst %d\n", l_prte->dst);   
+          } else if ((hop_dist - cur_dist) / l_prte->delay > g_speed_) {
+              printf("speed is %lf, pass dst %d\n", (hop_dist - cur_dist) / l_prte->delay, l_prte->dst);  
+          }    
+      }    
+  }
 
   target_->recv(p, (Handler *)0);
   return;
