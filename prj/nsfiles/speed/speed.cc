@@ -39,6 +39,7 @@
 extern "C" {
 #include <stdarg.h>
 #include <float.h>
+#include <time.h>
 }
 
 #include "speed.h"
@@ -771,6 +772,9 @@ SPEED_Agent::processUpdate (Packet * p)
 	    }
 	  else
 	    { // we don't care about their stale info
+		  prte->advertise_ok_at = now;
+		  prte->advert_metric = true;
+		  needTriggeredUpdate(prte, now);
 	    }
 	}
       else
@@ -983,37 +987,71 @@ SPEED_Agent::forwardPacket (Packet * p)
   hdrc->addr_type_ = NS_AF_INET;
   hdrc->xmit_failure_ = mac_callback;
   hdrc->xmit_failure_data_ = this;
-  
+/*  
   if (prte->metric > 1)
 	  hdrc->next_hop_ = prte->hop;
   else
 	  hdrc->next_hop_ = dst;
-  if (verbose_)
-	  trace ("Neighbor pkts outside domain: \
-VFP %.5f _%d_ %d:%d -> %d:%d", now, myaddr_, iph->saddr(),
-		 iph->sport(), iph->daddr(), iph->dport());  
-
+*/
   assert (!HDR_CMN (p)->xmit_failure_ ||
 	  HDR_CMN (p)->xmit_failure_ == mac_callback);
 // debug
   if (DEBUG_P)	
       printf("Forwarding packet from %d to %d with delay %lf\n", myaddr_, hdrc->next_hop_, prte->delay);
 
-  MobileNode *dst_node = (MobileNode *)Node::get_node_by_address(dst);     
-  MobileNode *cur_node = (MobileNode *)Node::get_node_by_address(myaddr_);     
-  double cur_dist = cur_node->distance(dst_node);
-  ntable_ent *l_prte;
-  for (table_->InitLoop(); (l_prte = table_->NextLoop());) {
-      if (l_prte->metric == 1) { 
-          MobileNode *hop_node = (MobileNode *)Node::get_node_by_address(l_prte->dst);
-          double hop_dist = hop_node->distance(dst_node);
-          if (l_prte->delay == 0.0) {
-              printf("delay is 0.0, pass dst %d\n", l_prte->dst);   
-          } else if ((hop_dist - cur_dist) / l_prte->delay > g_speed_) {
-              printf("speed is %lf, pass dst %d\n", (hop_dist - cur_dist) / l_prte->delay, l_prte->dst);  
-          }    
-      }    
+  if (prte->metric < 2) {  // we can go to destination directly
+	hdrc->next_hop_ = dst;	
+  } else {
+    MobileNode *dst_node = (MobileNode *)Node::get_node_by_address(dst);     
+    MobileNode *cur_node = (MobileNode *)Node::get_node_by_address(myaddr_);     
+    double cur_dist = cur_node->distance(dst_node);
+    nsaddr_t possible_hop[100];
+    int count = 0;
+    ntable_ent *l_prte;
+    for (table_->InitLoop(); (l_prte = table_->NextLoop());) {
+		if (DEBUG_P)
+			printf("l_prte metric %d, dst %d, hop %d\n", l_prte->metric, l_prte->dst, l_prte->hop);
+        if (l_prte->metric == 1) { 
+            MobileNode *hop_node = (MobileNode *)Node::get_node_by_address(l_prte->dst);
+            double hop_dist = hop_node->distance(dst_node);
+            if (l_prte->delay == 0.0) {
+                if (DEBUG_P)
+			  	    printf("delay is 0.0, possible dst %d, count %d\n", l_prte->dst, count);   
+			    possible_hop[count] = l_prte->dst;
+			    count++;
+            } else if ((cur_dist - hop_dist) / l_prte->delay > g_speed_) {
+                if (DEBUG_P)
+					printf("speed is %lf, pass dst %d, count %d\n", (cur_dist - hop_dist) / l_prte->delay, l_prte->dst, count);  
+			    possible_hop[count] = l_prte->dst;
+			    count++;
+            } else {
+				if (DEBUG_P) {
+					if ((cur_dist - hop_dist) / l_prte->delay > 0)
+						printf("metric is 1 but unsufficient speed %lf, hop dist %lf, cur dist %lf\n", (cur_dist - hop_dist) / l_prte->delay, hop_dist, cur_dist);
+				}
+			}
+        }   
+    }
+
+	if (count == 0) { // there is not any possible hop
+		if (DEBUG_P)
+			printf("Cannot pass to dst %d\n", dst);
+		drop(p, DROP_RTR_NO_ROUTE);
+		return;
+	} else {
+		struct timespec ts;
+		clock_gettime(CLOCK_MONOTONIC, &ts);
+		srand((time_t)ts.tv_nsec);
+		int choice = rand() % count;
+		if (DEBUG_P)
+			printf("Choose hop %d to dst %d\n", possible_hop[choice], dst);
+		hdrc->next_hop_ = possible_hop[choice];
+	}
   }
+
+  if (verbose_)
+      trace ("Neighbor pkts outside domain: VFP %.5f _%d_ %d:%d -> %d:%d", now, myaddr_, iph->saddr(),
+         iph->sport(), iph->daddr(), iph->dport());  
 
   target_->recv(p, (Handler *)0);
   return;
